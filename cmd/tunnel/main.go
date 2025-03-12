@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
+	pb "github.com/cryptexus/go-tunnel/internal/proto"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	pb "github.com/cryptexus/go-tunnel/internal/proto"
 )
 
 var (
@@ -86,16 +86,16 @@ Examples:
 			})
 
 			if err != nil {
-			fmt.Printf("%s Failed to create tunnel %d:%d: %v\n", errorColor("✗"), pair.local, pair.remote, err)
+				fmt.Printf("%s Failed to create tunnel %d:%d: %v\n", errorColor("✗"), pair.local, pair.remote, err)
 				continue
 			}
 
 			if !resp.Success {
-			fmt.Printf("%s Failed to create tunnel %d:%d: %s\n", errorColor("✗"), pair.local, pair.remote, resp.Error)
+				fmt.Printf("%s Failed to create tunnel %d:%d: %s\n", errorColor("✗"), pair.local, pair.remote, resp.Error)
 				continue
 			}
 
-			fmt.Printf("%s %s:%d -> localhost:%d\n", 
+			fmt.Printf("%s %s:%d -> localhost:%d\n",
 				successColor("✓ Tunnel created:"),
 				host,
 				pair.remote,
@@ -138,7 +138,7 @@ Use --watch or -w to continuously monitor tunnels in real-time.`,
 				done <- true
 			}()
 
-			fmt.Print("\033[?25l") // Hide cursor
+			fmt.Print("\033[?25l")       // Hide cursor
 			defer fmt.Print("\033[?25h") // Show cursor on exit
 
 			ticker := time.NewTicker(1 * time.Second)
@@ -151,7 +151,7 @@ Use --watch or -w to continuously monitor tunnels in real-time.`,
 				case <-ticker.C:
 					// Clear screen and move cursor to top-left
 					fmt.Print("\033[H\033[2J")
-					
+
 					resp, err = client.ListTunnels(context.Background(), &pb.ListTunnelsRequest{})
 					if err != nil {
 						log.Printf("Failed to list tunnels: %v", err)
@@ -166,7 +166,7 @@ Use --watch or -w to continuously monitor tunnels in real-time.`,
 					fmt.Printf("%s %s\n", headerColor("Active Tunnels"), infoColor("(Press Ctrl+C to exit)"))
 					fmt.Println()
 				}
-				
+
 				displayTunnels(resp.Tunnels)
 			}
 		}
@@ -178,7 +178,7 @@ Use --watch or -w to continuously monitor tunnels in real-time.`,
 
 		fmt.Printf("%s\n", headerColor("Active Tunnels"))
 		fmt.Println()
-		
+
 		displayTunnels(resp.Tunnels)
 
 	},
@@ -264,18 +264,18 @@ func formatDuration(d time.Duration) string {
 	if seconds < 60 {
 		return fmt.Sprintf("%ds", seconds)
 	}
-	
+
 	minutes := seconds / 60
 	if minutes < 60 {
 		return fmt.Sprintf("%dm", minutes)
 	}
-	
+
 	hours := minutes / 60
 	minutes = minutes % 60
 	if hours < 24 {
 		return fmt.Sprintf("%dh%dm", hours, minutes)
 	}
-	
+
 	days := hours / 24
 	hours = hours % 24
 	return fmt.Sprintf("%dd%dh", days, hours)
@@ -310,8 +310,8 @@ func displayTunnels(tunnels []*pb.ListTunnelsResponse_TunnelInfo) {
 		)
 
 		// Format uptime and activity
-		fmt.Printf("  %s %s\n", 
-			infoColor("Uptime:"), 
+		fmt.Printf("  %s %s\n",
+			infoColor("Uptime:"),
 			formatDuration(uptime),
 		)
 		fmt.Printf("  %s %s ago\n",
@@ -329,7 +329,7 @@ func displayTunnels(tunnels []*pb.ListTunnelsResponse_TunnelInfo) {
 		// Format current bandwidth
 		fmt.Printf("  %s %.1f KB/s (↑) / %.1f KB/s (↓)\n",
 			infoColor("Current Speed:"),
-			t.BandwidthUp/1024,  // Convert to KB/s
+			t.BandwidthUp/1024, // Convert to KB/s
 			t.BandwidthDown/1024,
 		)
 
@@ -357,4 +357,3 @@ func main() {
 		os.Exit(1)
 	}
 }
-

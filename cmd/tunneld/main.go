@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/cryptexus/go-tunnel/internal/tunnel"
 	pb "github.com/cryptexus/go-tunnel/internal/proto"
+	"github.com/cryptexus/go-tunnel/internal/tunnel"
 	"golang.org/x/crypto/ssh"
 	"google.golang.org/grpc"
 )
@@ -64,28 +64,27 @@ func (s *server) CloseAllTunnels(ctx context.Context, req *pb.CloseAllTunnelsReq
 func (s *server) ListTunnels(ctx context.Context, req *pb.ListTunnelsRequest) (*pb.ListTunnelsResponse, error) {
 	tunnels := s.manager.ListTunnels()
 	var pbTunnels []*pb.ListTunnelsResponse_TunnelInfo
-	
+
 	for _, t := range tunnels {
 		pbTunnels = append(pbTunnels, &pb.ListTunnelsResponse_TunnelInfo{
-			Host:           t.Host,
-			LocalPort:      int32(t.LocalPort),
-			RemotePort:     int32(t.RemotePort),
-			LastActivity:   t.LastActivity.Unix(),
-			CreatedAt:      t.CreatedAt.Unix(),
-			BytesSent:      t.BytesSent,
-			BytesReceived:  t.BytesReceived,
-			BandwidthUp:    t.BandwidthUp,
-			BandwidthDown:  t.BandwidthDown,
-			ActiveConns:    t.ActiveConns,
-			TotalConns:     t.TotalConns,
+			Host:          t.Host,
+			LocalPort:     int32(t.LocalPort),
+			RemotePort:    int32(t.RemotePort),
+			LastActivity:  t.LastActivity.Unix(),
+			CreatedAt:     t.CreatedAt.Unix(),
+			BytesSent:     t.BytesSent,
+			BytesReceived: t.BytesReceived,
+			BandwidthUp:   t.BandwidthUp,
+			BandwidthDown: t.BandwidthDown,
+			ActiveConns:   t.ActiveConns,
+			TotalConns:    t.TotalConns,
 		})
 	}
-	
+
 	return &pb.ListTunnelsResponse{
 		Tunnels: pbTunnels,
 	}, nil
 }
-
 
 func main() {
 	socketPath := "/tmp/tunnel.sock"
@@ -145,9 +144,9 @@ func getSSHAuth() ssh.AuthMethod {
 
 	// Common key file names to try
 	keyFiles := []string{
-		"id_ed25519",  // Preferred modern key type
-		"id_rsa",      // Common RSA key
-		"id_ecdsa",    // ECDSA key
+		"id_ed25519", // Preferred modern key type
+		"id_rsa",     // Common RSA key
+		"id_ecdsa",   // ECDSA key
 	}
 
 	sshDir := os.ExpandEnv("$HOME/.ssh")
@@ -190,4 +189,3 @@ func tryLoadKey(keyPath string) ssh.AuthMethod {
 	log.Printf("Successfully loaded SSH key: %s", keyPath)
 	return ssh.PublicKeys(signer)
 }
-

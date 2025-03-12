@@ -3,12 +3,12 @@ package tunnel
 import (
 	"context"
 	"fmt"
+	"golang.org/x/crypto/ssh"
 	"io"
 	"log"
 	"net"
 	"sync"
 	"time"
-	"golang.org/x/crypto/ssh"
 )
 
 type TunnelManager struct {
@@ -31,7 +31,7 @@ type Tunnel struct {
 	healthCheck  *time.Ticker
 	isActive     bool
 	activeMu     sync.RWMutex
-	
+
 	// Bandwidth tracking
 	BytesSent     uint64
 	BytesReceived uint64
@@ -41,9 +41,9 @@ type Tunnel struct {
 	lastBWUpdate  time.Time
 
 	// Connection tracking
-	ActiveConns   int32
-	TotalConns    uint64
-	connectionMu  sync.RWMutex
+	ActiveConns  int32
+	TotalConns   uint64
+	connectionMu sync.RWMutex
 }
 
 func NewTunnelManager() *TunnelManager {
@@ -130,7 +130,7 @@ func (tm *TunnelManager) CreateTunnel(host string, localPort, remotePort int, ss
 		listener:     listener,
 		done:         make(chan struct{}),
 		reconnect:    make(chan struct{}),
-		sshConfig:    sshConfig,  // Store SSH config for reconnection
+		sshConfig:    sshConfig, // Store SSH config for reconnection
 		CreatedAt:    now,
 		LastActivity: now,
 	}
@@ -242,7 +242,7 @@ func (t *Tunnel) forward(local net.Conn) {
 		t.ActiveConns--
 		t.connectionMu.Unlock()
 	}()
-	
+
 	// Mark tunnel as active
 	t.activeMu.Lock()
 	t.isActive = true
@@ -252,26 +252,26 @@ func (t *Tunnel) forward(local net.Conn) {
 	t.bandwidthMu.Lock()
 	t.lastBWUpdate = time.Now()
 	t.bandwidthMu.Unlock()
-	
+
 	// Set timeouts on local connection
 	local.SetDeadline(time.Now().Add(30 * time.Second))
-	
+
 	// Try to establish remote connection with retry logic and timeout
 	var remote net.Conn
 	var err error
 	connectChan := make(chan struct{})
-	
+
 	go func() {
 		for attempts := 0; attempts < 3; attempts++ {
 			remote, err = t.client.Dial("tcp", fmt.Sprintf("localhost:%d", t.RemotePort))
 			if err == nil {
 				break
 			}
-			
+
 			if attempts < 2 {
 				log.Printf("Failed to connect to remote (attempt %d/3): %v, retrying...", attempts+1, err)
 				time.Sleep(time.Second * time.Duration(attempts+1))
-				
+
 				// Try to reconnect SSH if needed
 				if t.client.Conn.Wait() != nil { // SSH connection is dead
 					if err := t.reconnectSSH(); err != nil {
@@ -288,7 +288,7 @@ func (t *Tunnel) forward(local net.Conn) {
 		}
 		close(connectChan)
 	}()
-	
+
 	// Wait for connection with timeout
 	select {
 	case <-connectChan:
@@ -299,13 +299,13 @@ func (t *Tunnel) forward(local net.Conn) {
 		log.Printf("Connection timeout while connecting to remote")
 		return
 	}
-	
+
 	defer remote.Close()
-	
+
 	// Reset deadline after successful connection
 	local.SetDeadline(time.Time{})
 	remote.SetDeadline(time.Time{})
-	
+
 	// Set keepalive on both connections
 	if tcpConn, ok := local.(*net.TCPConn); ok {
 		tcpConn.SetKeepAlive(true)
@@ -321,12 +321,12 @@ func (t *Tunnel) forward(local net.Conn) {
 
 	var wg sync.WaitGroup
 	wg.Add(2)
-	
+
 	// Copy data in both directions with error handling and timeout
 	copyData := func(dst net.Conn, src net.Conn, description string, isUpload bool) {
 		defer wg.Done()
 		defer cancel() // Cancel context on exit
-		
+
 		buf := make([]byte, 32*1024)
 		var lastUpdate time.Time
 		var bytesCopied uint64
@@ -344,7 +344,7 @@ func (t *Tunnel) forward(local net.Conn) {
 					}
 					return
 				}
-				
+
 				dst.SetWriteDeadline(time.Now().Add(5 * time.Second))
 				_, err = dst.Write(buf[:n])
 				if err != nil {
@@ -379,15 +379,14 @@ func (t *Tunnel) forward(local net.Conn) {
 					bytesCopied = 0
 				}
 				t.bandwidthMu.Unlock()
-				
+
 				t.updateActivity()
 			}
 		}
 	}
 
-	go copyData(remote, local, "local->remote", true)   // Upload
-	go copyData(local, remote, "remote->local", false)  // Download
-
+	go copyData(remote, local, "local->remote", true)  // Upload
+	go copyData(local, remote, "remote->local", false) // Download
 
 	// Wait with timeout
 	done := make(chan struct{})
@@ -410,11 +409,11 @@ func (t *Tunnel) reconnectSSH() error {
 	if err != nil {
 		return fmt.Errorf("failed to reconnect SSH: %v", err)
 	}
-	
+
 	oldClient := t.client
 	t.client = client
 	oldClient.Close()
-	
+
 	return nil
 }
 
@@ -465,13 +464,13 @@ func (tm *TunnelManager) ListTunnels() []Tunnel {
 		t.bandwidthMu.RLock()
 		t.connectionMu.RLock()
 		tunnel := Tunnel{
-			Host:           t.Host,
-			LocalPort:      t.LocalPort,
-			RemotePort:     t.RemotePort,
-			CreatedAt:      t.CreatedAt,
-			LastActivity:   t.LastActivity,
-			client:         t.client,
-			listener:       t.listener,
+			Host:          t.Host,
+			LocalPort:     t.LocalPort,
+			RemotePort:    t.RemotePort,
+			CreatedAt:     t.CreatedAt,
+			LastActivity:  t.LastActivity,
+			client:        t.client,
+			listener:      t.listener,
 			done:          t.done,
 			reconnect:     t.reconnect,
 			sshConfig:     t.sshConfig,
@@ -503,5 +502,3 @@ func (tm *TunnelManager) CloseAllTunnels() int {
 	}
 	return count
 }
-
-
