@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -281,7 +282,21 @@ func formatDuration(d time.Duration) string {
 	return fmt.Sprintf("%dd%dh", days, hours)
 }
 
+// sortTunnels sorts tunnels by host and port
+func sortTunnels(tunnels []*pb.ListTunnelsResponse_TunnelInfo) {
+	sort.Slice(tunnels, func(i, j int) bool {
+		// First sort by host
+		if tunnels[i].Host != tunnels[j].Host {
+			return tunnels[i].Host < tunnels[j].Host
+		}
+		// Then by remote port
+		return tunnels[i].RemotePort < tunnels[j].RemotePort
+	})
+}
+
 func displayTunnels(tunnels []*pb.ListTunnelsResponse_TunnelInfo) {
+	// Sort tunnels before display
+	sortTunnels(tunnels)
 	for _, t := range tunnels {
 		// Calculate duration since creation
 		uptime := time.Since(time.Unix(t.CreatedAt, 0))
