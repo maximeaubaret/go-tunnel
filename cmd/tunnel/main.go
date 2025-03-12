@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
 	"time"
@@ -106,7 +107,11 @@ Examples:
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List active tunnels",
+	Long: `List active tunnels and their status.
+	
+Use --watch or -w to continuously monitor tunnels in real-time.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		watch, _ := cmd.Flags().GetBool("watch")
 		conn, err := grpc.Dial("unix:///tmp/tunnel.sock", grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			log.Fatalf("Failed to connect: %v", err)
@@ -119,6 +124,52 @@ var listCmd = &cobra.Command{
 			log.Fatalf("Failed to list tunnels: %v", err)
 		}
 
+		if watch {
+			// Handle Ctrl+C gracefully
+			sigChan := make(chan os.Signal, 1)
+			signal.Notify(sigChan, os.Interrupt)
+			done := make(chan bool)
+
+			go func() {
+				<-sigChan
+				fmt.Print("\033[?25h") // Show cursor
+				fmt.Println("\nExiting watch mode...")
+				done <- true
+			}()
+
+			fmt.Print("\033[?25l") // Hide cursor
+			defer fmt.Print("\033[?25h") // Show cursor on exit
+
+			ticker := time.NewTicker(1 * time.Second)
+			defer ticker.Stop()
+
+			for {
+				select {
+				case <-done:
+					return
+				case <-ticker.C:
+					// Clear screen and move cursor to top-left
+					fmt.Print("\033[H\033[2J")
+					
+					resp, err = client.ListTunnels(context.Background(), &pb.ListTunnelsRequest{})
+					if err != nil {
+						log.Printf("Failed to list tunnels: %v", err)
+						continue
+					}
+
+					if len(resp.Tunnels) == 0 {
+						fmt.Printf("%s No active tunnels\n", infoColor("ℹ"))
+						continue
+					}
+
+					fmt.Printf("%s %s\n", headerColor("Active Tunnels"), infoColor("(Press Ctrl+C to exit)"))
+					fmt.Println()
+				}
+				
+				displayTunnels(resp.Tunnels)
+			}
+		}
+
 		if len(resp.Tunnels) == 0 {
 			fmt.Printf("%s No active tunnels\n", infoColor("ℹ"))
 			return
@@ -126,58 +177,10 @@ var listCmd = &cobra.Command{
 
 		fmt.Printf("%s\n", headerColor("Active Tunnels"))
 		fmt.Println()
+		
+		displayTunnels(resp.Tunnels)
 
-		for _, t := range resp.Tunnels {
-			lastActivity := time.Unix(t.LastActivity, 0)
-			createdAt := time.Unix(t.CreatedAt, 0)
-			now := time.Now()
-			
-			// Ensure timestamps are valid
-			if createdAt.After(now) || createdAt.IsZero() {
-				createdAt = now
-			}
-			
-			uptime := now.Sub(createdAt).Round(time.Second)
-			
-			// Print tunnel information in a list format
-			fmt.Printf("%s %s:%d → localhost:%d\n",
-				successColor("●"),
-				t.Host,
-				t.RemotePort,
-				t.LocalPort,
-			)
-
-			// Only show last activity if there has been some activity
-			activityStr := ""
-			if !lastActivity.IsZero() && !lastActivity.Equal(createdAt) {
-				lastActivityAgo := now.Sub(lastActivity).Round(time.Second)
-				activityStr = fmt.Sprintf(", last active %s ago", formatDuration(lastActivityAgo))
-			}
-			
-			fmt.Printf("   %s %s\n",
-				infoColor("↳"),
-				fmt.Sprintf("up %s%s", 
-					formatDuration(uptime),
-					activityStr,
-				),
-			)
-
-			// Display bandwidth information
-			fmt.Printf("   %s %s sent, %s received\n",
-				infoColor("↳"),
-				formatBytes(t.BytesSent),
-				formatBytes(t.BytesReceived),
-			)
-			
-			if t.BandwidthUp > 0 || t.BandwidthDown > 0 {
-				fmt.Printf("   %s ↑ %s/s, ↓ %s/s\n",
-					infoColor("↳"),
-					formatBytes(uint64(t.BandwidthUp)),
-					formatBytes(uint64(t.BandwidthDown)),
-				)
-			}
-			fmt.Println()
-		}
+		displayTunnels(resp.Tunnels)
 	},
 }
 
@@ -278,7 +281,50 @@ func formatDuration(d time.Duration) string {
 	return fmt.Sprintf("%dd%dh", days, hours)
 }
 
+func displayTunnels(tunnels []*pb.ListTunnelsResponse_TunnelInfo) {
+	for _, t := range tunnels {
+		// Calculate duration since creation
+		uptime := time.Since(time.Unix(t.CreatedAt, 0))
+		lastActivity := time.Since(time.Unix(t.LastActivity, 0))
+
+		// Format the basic tunnel information
+		fmt.Printf("%s %s:%d -> localhost:%d\n",
+			headerColor("Tunnel:"),
+			t.Host,
+			t.RemotePort,
+			t.LocalPort,
+		)
+
+		// Format uptime and activity
+		fmt.Printf("  %s %s\n", 
+			infoColor("Uptime:"), 
+			formatDuration(uptime),
+		)
+		fmt.Printf("  %s %s ago\n",
+			infoColor("Last Activity:"),
+			formatDuration(lastActivity),
+		)
+
+		// Format data transfer information
+		fmt.Printf("  %s %s (↑) / %s (↓)\n",
+			infoColor("Total Transfer:"),
+			formatBytes(t.BytesSent),
+			formatBytes(t.BytesReceived),
+		)
+
+		// Format current bandwidth
+		fmt.Printf("  %s %.1f KB/s (↑) / %.1f KB/s (↓)\n",
+			infoColor("Current Speed:"),
+			t.BandwidthUp/1024,  // Convert to KB/s
+			t.BandwidthDown/1024,
+		)
+
+		fmt.Println()
+	}
+}
+
 func init() {
+	listCmd.Flags().BoolP("watch", "w", false, "Watch mode - continuously update the display")
 	rootCmd.AddCommand(listCmd)
 	rootCmd.AddCommand(closeCmd)
 	rootCmd.AddCommand(closeAllCmd)
