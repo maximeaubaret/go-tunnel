@@ -181,7 +181,6 @@ Use --watch or -w to continuously monitor tunnels in real-time.`,
 		
 		displayTunnels(resp.Tunnels)
 
-		displayTunnels(resp.Tunnels)
 	},
 }
 
