@@ -8,12 +8,6 @@ go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 # Add Go bin to PATH temporarily if not already there
 export PATH="$PATH:$(go env GOPATH)/bin"
 
-# Initialize go module if not already initialized
-if [ ! -f "go.mod" ]; then
-    echo "Initializing Go module..."
-    go mod init github.com/cryptexus/go-tunnel
-fi
-
 # Download and tidy dependencies
 echo "Getting dependencies..."
 go get -u google.golang.org/grpc

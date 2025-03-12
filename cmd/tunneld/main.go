@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 	"net"
@@ -20,6 +21,50 @@ type server struct {
 	manager *tunnel.TunnelManager
 	config  *ssh.ClientConfig
 }
+
+func (s *server) CreateTunnel(ctx context.Context, req *pb.CreateTunnelRequest) (*pb.CreateTunnelResponse, error) {
+	err := s.manager.CreateTunnel(req.Host, int(req.LocalPort), int(req.RemotePort), s.config)
+	if err != nil {
+		return &pb.CreateTunnelResponse{
+			Success: false,
+			Error:   err.Error(),
+		}, nil
+	}
+	return &pb.CreateTunnelResponse{
+		Success: true,
+	}, nil
+}
+
+func (s *server) CloseTunnel(ctx context.Context, req *pb.CloseTunnelRequest) (*pb.CloseTunnelResponse, error) {
+	err := s.manager.CloseTunnel(req.Host, int(req.RemotePort))
+	if err != nil {
+		return &pb.CloseTunnelResponse{
+			Success: false,
+			Error:   err.Error(),
+		}, nil
+	}
+	return &pb.CloseTunnelResponse{
+		Success: true,
+	}, nil
+}
+
+func (s *server) ListTunnels(ctx context.Context, req *pb.ListTunnelsRequest) (*pb.ListTunnelsResponse, error) {
+	tunnels := s.manager.ListTunnels()
+	var pbTunnels []*pb.ListTunnelsResponse_TunnelInfo
+	
+	for _, t := range tunnels {
+		pbTunnels = append(pbTunnels, &pb.ListTunnelsResponse_TunnelInfo{
+			Host:       t.Host,
+			LocalPort:  int32(t.LocalPort),
+			RemotePort: int32(t.RemotePort),
+		})
+	}
+	
+	return &pb.ListTunnelsResponse{
+		Tunnels: pbTunnels,
+	}, nil
+}
+
 
 func main() {
 	socketPath := "/tmp/tunnel.sock"
