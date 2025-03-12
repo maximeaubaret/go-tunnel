@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"sync"
+	"time"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -15,12 +16,14 @@ type TunnelManager struct {
 }
 
 type Tunnel struct {
-	Host      string
-	LocalPort int
+	Host       string
+	LocalPort  int
 	RemotePort int
-	client    *ssh.Client
-	listener  net.Listener
-	done      chan struct{}
+	client     *ssh.Client
+	listener   net.Listener
+	done       chan struct{}
+	reconnect  chan struct{}
+	sshConfig  *ssh.ClientConfig
 }
 
 func NewTunnelManager() *TunnelManager {
@@ -56,6 +59,8 @@ func (tm *TunnelManager) CreateTunnel(host string, localPort, remotePort int, ss
 		client:     client,
 		listener:   listener,
 		done:       make(chan struct{}),
+		reconnect:  make(chan struct{}),
+		sshConfig:  sshConfig,  // Store SSH config for reconnection
 	}
 
 	tm.tunnels[key] = tunnel
@@ -74,7 +79,12 @@ func (t *Tunnel) start() {
 		default:
 			local, err := t.listener.Accept()
 			if err != nil {
-				continue
+				if netErr, ok := err.(net.Error); ok && netErr.Temporary() {
+					log.Printf("Temporary accept error: %v, retrying...", err)
+					continue
+				}
+				log.Printf("Fatal accept error: %v, stopping tunnel", err)
+				return
 			}
 
 			go t.forward(local)
@@ -83,31 +93,82 @@ func (t *Tunnel) start() {
 }
 
 func (t *Tunnel) forward(local net.Conn) {
+	defer local.Close()
+	
 	localAddr := local.RemoteAddr().String()
 	log.Printf("New connection from %s to %s:%d", localAddr, t.Host, t.RemotePort)
 	
-	remote, err := t.client.Dial("tcp", fmt.Sprintf("localhost:%d", t.RemotePort))
-	if err != nil {
-		local.Close()
+	// Try to establish remote connection with retry logic
+	var remote net.Conn
+	var err error
+	for attempts := 0; attempts < 3; attempts++ {
+		remote, err = t.client.Dial("tcp", fmt.Sprintf("localhost:%d", t.RemotePort))
+		if err == nil {
+			break
+		}
+		
+		if attempts < 2 {
+			log.Printf("Failed to connect to remote (attempt %d/3): %v, retrying...", attempts+1, err)
+			time.Sleep(time.Second * time.Duration(attempts+1))
+			
+			// Try to reconnect SSH if needed
+			if t.client.Conn.Wait() != nil { // SSH connection is dead
+				if err := t.reconnectSSH(); err != nil {
+					log.Printf("Failed to reconnect SSH: %v", err)
+					return
+				}
+			}
+		} else {
+			log.Printf("Failed to connect to remote after 3 attempts: %v", err)
+			return
+		}
+	}
+	
+	if remote == nil {
 		return
 	}
+	defer remote.Close()
 
 	var wg sync.WaitGroup
 	wg.Add(2)
-
-	go func() {
+	
+	// Copy data in both directions with error handling
+	copyData := func(dst net.Conn, src net.Conn, description string) {
 		defer wg.Done()
-		io.Copy(remote, local)
-		remote.Close()
-	}()
+		_, err := io.Copy(dst, src)
+		if err != nil && !isClosedError(err) {
+			log.Printf("Error in %s stream: %v", description, err)
+		}
+	}
 
-	go func() {
-		defer wg.Done()
-		io.Copy(local, remote)
-		local.Close()
-	}()
+	go copyData(remote, local, "local->remote")
+	go copyData(local, remote, "remote->local")
 
 	wg.Wait()
+}
+
+func (t *Tunnel) reconnectSSH() error {
+	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:22", t.Host), t.sshConfig)
+	if err != nil {
+		return fmt.Errorf("failed to reconnect SSH: %v", err)
+	}
+	
+	oldClient := t.client
+	t.client = client
+	oldClient.Close()
+	
+	return nil
+}
+
+// isClosedError checks if the error is due to using closed network connection
+func isClosedError(err error) bool {
+	if err == io.EOF {
+		return true
+	}
+	if opErr, ok := err.(*net.OpError); ok {
+		return opErr.Err.Error() == "use of closed network connection"
+	}
+	return false
 }
 
 func (tm *TunnelManager) CloseTunnel(host string, remotePort int) error {
