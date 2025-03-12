@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package tunnel;
+option go_package = "github.com/cryptexus/go-tunnel/internal/proto";
+
+service TunnelService {
+  rpc CreateTunnel (CreateTunnelRequest) returns (CreateTunnelResponse) {}
+  rpc CloseTunnel (CloseTunnelRequest) returns (CloseTunnelResponse) {}
+  rpc ListTunnels (ListTunnelsRequest) returns (ListTunnelsResponse) {}
+}
+
+message CreateTunnelRequest {
+  string host = 1;
+  int32 local_port = 2;
+  int32 remote_port = 3;
+}
+
+message CreateTunnelResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message CloseTunnelRequest {
+  string host = 1;
+  int32 remote_port = 2;
+}
+
+message CloseTunnelResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message ListTunnelsRequest {}
+
+message ListTunnelsResponse {
+  message TunnelInfo {
+    string host = 1;
+    int32 local_port = 2;
+    int32 remote_port = 3;
+  }
+  repeated TunnelInfo tunnels = 1;
+}
+
