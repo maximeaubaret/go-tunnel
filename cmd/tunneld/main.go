@@ -6,15 +6,15 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/cryptexus/go-tunnel/internal/version"
+	"github.com/maximeaubaret/go-tunnel/internal/version"
 	"net"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
 
-	pb "github.com/cryptexus/go-tunnel/internal/proto"
-	"github.com/cryptexus/go-tunnel/internal/tunnel"
+	pb "github.com/maximeaubaret/go-tunnel/internal/proto"
+	"github.com/maximeaubaret/go-tunnel/internal/tunnel"
 	"golang.org/x/crypto/ssh"
 	"google.golang.org/grpc"
 )

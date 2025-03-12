@@ -93,7 +93,7 @@ The watch mode (`tunnel list -w`) displays:
 To try the tool without installation:
 
 ```bash
-nix run github:cryptexus/go-tunnel
+nix run github:maximeaubaret/go-tunnel
 ```
 
 ### NixOS Configuration
@@ -102,7 +102,7 @@ Add to your NixOS configuration:
 
 ```nix
 {
-  inputs.go-tunnel.url = "github:cryptexus/go-tunnel";
+  inputs.go-tunnel.url = "github:maximeaubaret/go-tunnel";
 
   outputs = { self, nixpkgs, go-tunnel, ... }: {
     nixosConfigurations.your-hostname = nixpkgs.lib.nixosSystem {
@@ -136,7 +136,7 @@ Or add to your home-manager configuration:
 
 ```nix
 {
-  inputs.go-tunnel.url = "github:cryptexus/go-tunnel";
+  inputs.go-tunnel.url = "github:maximeaubaret/go-tunnel";
 
   outputs = { self, nixpkgs, home-manager, go-tunnel, ... }: {
     homeConfigurations.your-username = home-manager.lib.homeManagerConfiguration {

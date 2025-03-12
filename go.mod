@@ -1,4 +1,4 @@
-module github.com/cryptexus/go-tunnel
+module github.com/maximeaubaret/go-tunnel
 
 go 1.23.0
 

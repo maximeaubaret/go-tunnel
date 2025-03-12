@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/cryptexus/go-tunnel/internal/version"
+	"github.com/maximeaubaret/go-tunnel/internal/version"
 	"os"
 	"os/signal"
 	"sort"
@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	pb "github.com/cryptexus/go-tunnel/internal/proto"
+	pb "github.com/maximeaubaret/go-tunnel/internal/proto"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"

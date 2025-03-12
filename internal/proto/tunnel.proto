@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package tunnel;
-option go_package = "github.com/cryptexus/go-tunnel/internal/proto";
+option go_package = "github.com/maximeaubaret/go-tunnel/internal/proto";
 
 service TunnelService {
   rpc CreateTunnel (CreateTunnelRequest) returns (CreateTunnelResponse) {}
