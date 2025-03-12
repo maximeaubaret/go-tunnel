@@ -21,8 +21,8 @@
             vendorHash = "sha256-1p/Hcqig5YgILDtdSdc0EozsK3prgnnpAo8MTbjwWo0=";
             proxyVendor = true;
 
-            # Add git to build inputs for module fetching
             nativeBuildInputs = with pkgs; [
+              git
               protoc-gen-go
               protoc-gen-go-grpc
               protobuf
