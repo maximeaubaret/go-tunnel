@@ -18,7 +18,7 @@
             version = "0.1.0";
             src = ./.;
 
-            vendorHash = "sha256-Fbztiyl6bFwXMhatRnGLqjxdnZIb2hIPWp1J2bUQenM=";
+            vendorHash = "sha256-gs8mzn9cLzhfcberaThXK/y1EY7S8mkIJE10uodwDPM=";
             proxyVendor = true;
 
             # Add git to build inputs for module fetching

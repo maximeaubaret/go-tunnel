@@ -38,6 +38,8 @@ message ListTunnelsResponse {
     string host = 1;
     int32 local_port = 2;
     int32 remote_port = 3;
+    int64 last_activity = 4;  // Unix timestamp of last activity
+    int64 created_at = 5;     // Unix timestamp of tunnel creation
   }
   repeated TunnelInfo tunnels = 1;
 }
