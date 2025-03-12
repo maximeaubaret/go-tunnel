@@ -414,10 +414,7 @@ func (tm *TunnelManager) ListTunnels() []Tunnel {
 			reconnect:    t.reconnect,
 			sshConfig:    t.sshConfig,
 		}
-		// Update LastActivity if there's no activity yet
-		if tunnel.LastActivity.IsZero() {
-			tunnel.LastActivity = tunnel.CreatedAt
-		}
+
 		t.activityMu.RUnlock()
 		tunnels = append(tunnels, tunnel)
 	}

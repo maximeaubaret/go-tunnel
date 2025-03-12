@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -126,23 +125,7 @@ var listCmd = &cobra.Command{
 		}
 
 		fmt.Printf("%s\n", headerColor("Active Tunnels"))
-
-		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"Host:Port", "Local Port", "Last Activity", "Uptime"})
-		table.SetHeaderColor(
-			tablewriter.Colors{tablewriter.FgHiBlueColor, tablewriter.Bold},
-			tablewriter.Colors{tablewriter.FgHiBlueColor, tablewriter.Bold},
-			tablewriter.Colors{tablewriter.FgHiBlueColor, tablewriter.Bold},
-			tablewriter.Colors{tablewriter.FgHiBlueColor, tablewriter.Bold},
-		)
-		table.SetBorder(false)
-		table.SetColumnSeparator("│")
-		table.SetCenterSeparator("─")
-		table.SetRowSeparator("─")
-		table.SetAutoWrapText(false)
-		table.SetAutoFormatHeaders(true)
-		table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-		table.SetAlignment(tablewriter.ALIGN_LEFT)
+		fmt.Println()
 
 		for _, t := range resp.Tunnels {
 			lastActivity := time.Unix(t.LastActivity, 0)
@@ -150,25 +133,36 @@ var listCmd = &cobra.Command{
 			now := time.Now()
 			
 			// Ensure timestamps are valid
-			if lastActivity.After(now) || lastActivity.IsZero() {
-				lastActivity = createdAt
-			}
 			if createdAt.After(now) || createdAt.IsZero() {
 				createdAt = now
 			}
 			
 			uptime := now.Sub(createdAt).Round(time.Second)
-			lastActivityAgo := now.Sub(lastActivity).Round(time.Second)
 			
-			table.Append([]string{
-				fmt.Sprintf("%s:%d", t.Host, t.RemotePort),
-				fmt.Sprintf("%d", t.LocalPort),
-				fmt.Sprintf("%s ago", formatDuration(lastActivityAgo)),
-				formatDuration(uptime),
-			})
+			// Print tunnel information in a list format
+			fmt.Printf("%s %s:%d → localhost:%d\n",
+				successColor("●"),
+				t.Host,
+				t.RemotePort,
+				t.LocalPort,
+			)
+
+			// Only show last activity if there has been some activity
+			activityStr := ""
+			if !lastActivity.IsZero() && !lastActivity.Equal(createdAt) {
+				lastActivityAgo := now.Sub(lastActivity).Round(time.Second)
+				activityStr = fmt.Sprintf(", last active %s ago", formatDuration(lastActivityAgo))
+			}
+			
+			fmt.Printf("   %s %s\n",
+				infoColor("↳"),
+				fmt.Sprintf("up %s%s", 
+					formatDuration(uptime),
+					activityStr,
+				),
+			)
+			fmt.Println()
 		}
-		
-		table.Render()
 	},
 }
 
