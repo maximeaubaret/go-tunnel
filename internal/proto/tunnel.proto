@@ -34,12 +34,16 @@ message CloseTunnelResponse {
 message ListTunnelsRequest {}
 
 message ListTunnelsResponse {
-  message TunnelInfo {
+    message TunnelInfo {
     string host = 1;
     int32 local_port = 2;
     int32 remote_port = 3;
     int64 last_activity = 4;  // Unix timestamp of last activity
     int64 created_at = 5;     // Unix timestamp of tunnel creation
+    uint64 bytes_sent = 6;    // Total bytes sent
+    uint64 bytes_received = 7; // Total bytes received
+    double bandwidth_up = 8;   // Current upload bandwidth (bytes/sec)
+    double bandwidth_down = 9; // Current download bandwidth (bytes/sec)
   }
   repeated TunnelInfo tunnels = 1;
 }

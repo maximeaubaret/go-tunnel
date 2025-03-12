@@ -161,6 +161,21 @@ var listCmd = &cobra.Command{
 					activityStr,
 				),
 			)
+
+			// Display bandwidth information
+			fmt.Printf("   %s %s sent, %s received\n",
+				infoColor("↳"),
+				formatBytes(t.BytesSent),
+				formatBytes(t.BytesReceived),
+			)
+			
+			if t.BandwidthUp > 0 || t.BandwidthDown > 0 {
+				fmt.Printf("   %s ↑ %s/s, ↓ %s/s\n",
+					infoColor("↳"),
+					formatBytes(uint64(t.BandwidthUp)),
+					formatBytes(uint64(t.BandwidthDown)),
+				)
+			}
 			fmt.Println()
 		}
 	},
@@ -225,6 +240,20 @@ var closeAllCmd = &cobra.Command{
 
 		fmt.Printf("%s Closed %d tunnel(s)\n", successColor("✓"), resp.Count)
 	},
+}
+
+// formatBytes converts bytes to human readable string
+func formatBytes(bytes uint64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	div, exp := uint64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
 }
 
 func formatDuration(d time.Duration) string {

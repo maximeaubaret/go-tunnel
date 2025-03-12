@@ -31,6 +31,14 @@ type Tunnel struct {
 	healthCheck  *time.Ticker
 	isActive     bool
 	activeMu     sync.RWMutex
+	
+	// Bandwidth tracking
+	BytesSent     uint64
+	BytesReceived uint64
+	bandwidthMu   sync.RWMutex
+	BandwidthUp   float64 // bytes/sec
+	BandwidthDown float64 // bytes/sec
+	lastBWUpdate  time.Time
 }
 
 func NewTunnelManager() *TunnelManager {
@@ -222,6 +230,11 @@ func (t *Tunnel) forward(local net.Conn) {
 	t.activeMu.Lock()
 	t.isActive = true
 	t.activeMu.Unlock()
+
+	// Initialize bandwidth tracking
+	t.bandwidthMu.Lock()
+	t.lastBWUpdate = time.Now()
+	t.bandwidthMu.Unlock()
 	
 	// Set timeouts on local connection
 	local.SetDeadline(time.Now().Add(30 * time.Second))
@@ -293,11 +306,14 @@ func (t *Tunnel) forward(local net.Conn) {
 	wg.Add(2)
 	
 	// Copy data in both directions with error handling and timeout
-	copyData := func(dst net.Conn, src net.Conn, description string) {
+	copyData := func(dst net.Conn, src net.Conn, description string, isUpload bool) {
 		defer wg.Done()
 		defer cancel() // Cancel context on exit
 		
 		buf := make([]byte, 32*1024)
+		var lastUpdate time.Time
+		var bytesCopied uint64
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -320,14 +336,41 @@ func (t *Tunnel) forward(local net.Conn) {
 					}
 					return
 				}
+
+				// Update bandwidth stats
+				t.bandwidthMu.Lock()
+				now := time.Now()
+				if isUpload {
+					t.BytesSent += uint64(n)
+					bytesCopied += uint64(n)
+				} else {
+					t.BytesReceived += uint64(n)
+					bytesCopied += uint64(n)
+				}
+
+				// Update bandwidth rates every second
+				if now.Sub(lastUpdate) >= time.Second {
+					duration := now.Sub(lastUpdate).Seconds()
+					if duration > 0 {
+						if isUpload {
+							t.BandwidthUp = float64(bytesCopied) / duration
+						} else {
+							t.BandwidthDown = float64(bytesCopied) / duration
+						}
+					}
+					lastUpdate = now
+					bytesCopied = 0
+				}
+				t.bandwidthMu.Unlock()
 				
 				t.updateActivity()
 			}
 		}
 	}
 
-	go copyData(remote, local, "local->remote")
-	go copyData(local, remote, "remote->local")
+	go copyData(remote, local, "local->remote", true)   // Upload
+	go copyData(local, remote, "remote->local", false)  // Download
+
 
 	// Wait with timeout
 	done := make(chan struct{})
@@ -402,19 +445,24 @@ func (tm *TunnelManager) ListTunnels() []Tunnel {
 	tunnels := make([]Tunnel, 0, len(tm.tunnels))
 	for _, t := range tm.tunnels {
 		t.activityMu.RLock()
+		t.bandwidthMu.RLock()
 		tunnel := Tunnel{
-			Host:         t.Host,
-			LocalPort:    t.LocalPort,
-			RemotePort:   t.RemotePort,
-			CreatedAt:    t.CreatedAt,
-			LastActivity: t.LastActivity,
-			client:       t.client,
-			listener:     t.listener,
-			done:         t.done,
-			reconnect:    t.reconnect,
-			sshConfig:    t.sshConfig,
+			Host:           t.Host,
+			LocalPort:      t.LocalPort,
+			RemotePort:     t.RemotePort,
+			CreatedAt:      t.CreatedAt,
+			LastActivity:   t.LastActivity,
+			client:         t.client,
+			listener:       t.listener,
+			done:          t.done,
+			reconnect:     t.reconnect,
+			sshConfig:     t.sshConfig,
+			BytesSent:     t.BytesSent,
+			BytesReceived: t.BytesReceived,
+			BandwidthUp:   t.BandwidthUp,
+			BandwidthDown: t.BandwidthDown,
 		}
-
+		t.bandwidthMu.RUnlock()
 		t.activityMu.RUnlock()
 		tunnels = append(tunnels, tunnel)
 	}

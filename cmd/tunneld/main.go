@@ -67,11 +67,15 @@ func (s *server) ListTunnels(ctx context.Context, req *pb.ListTunnelsRequest) (*
 	
 	for _, t := range tunnels {
 		pbTunnels = append(pbTunnels, &pb.ListTunnelsResponse_TunnelInfo{
-			Host:         t.Host,
-			LocalPort:    int32(t.LocalPort),
-			RemotePort:   int32(t.RemotePort),
-			LastActivity: t.LastActivity.Unix(),
-			CreatedAt:    t.CreatedAt.Unix(),
+			Host:           t.Host,
+			LocalPort:      int32(t.LocalPort),
+			RemotePort:     int32(t.RemotePort),
+			LastActivity:   t.LastActivity.Unix(),
+			CreatedAt:      t.CreatedAt.Unix(),
+			BytesSent:      t.BytesSent,
+			BytesReceived:  t.BytesReceived,
+			BandwidthUp:    t.BandwidthUp,
+			BandwidthDown:  t.BandwidthDown,
 		})
 	}
 	
