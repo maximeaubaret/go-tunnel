@@ -13,7 +13,7 @@
       in
       {
         packages = rec {
-          tunnel = pkgs.buildGoModule {
+          tunnel-cli = pkgs.buildGoModule {
             pname = "tunnel";
             version = "0.1.0";
             src = ./.;
@@ -49,6 +49,18 @@
             '';
           };
 
+          default = tunnel-cli;
+        };
+
+        apps = rec {
+          tunnel = {
+            type = "app";
+            program = "${self.packages.${system}.tunnel-cli}/bin/tunnel";
+          };
+          tunneld = {
+            type = "app";
+            program = "${self.packages.${system}.tunnel-cli}/bin/tunneld";
+          };
           default = tunnel;
         };
 
