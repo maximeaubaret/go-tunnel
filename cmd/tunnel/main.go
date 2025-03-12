@@ -131,9 +131,34 @@ var closeCmd = &cobra.Command{
 	},
 }
 
+var closeAllCmd = &cobra.Command{
+	Use:   "closeall",
+	Short: "Close all active tunnels",
+	Run: func(cmd *cobra.Command, args []string) {
+		conn, err := grpc.Dial("unix:///tmp/tunnel.sock", grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			log.Fatalf("Failed to connect: %v", err)
+		}
+		defer conn.Close()
+
+		client := pb.NewTunnelServiceClient(conn)
+		resp, err := client.CloseAllTunnels(context.Background(), &pb.CloseAllTunnelsRequest{})
+		if err != nil {
+			log.Fatalf("Failed to close all tunnels: %v", err)
+		}
+
+		if !resp.Success {
+			log.Fatalf("Failed to close all tunnels: %s", resp.Error)
+		}
+
+		fmt.Printf("Closed %d tunnel(s)\n", resp.Count)
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(listCmd)
 	rootCmd.AddCommand(closeCmd)
+	rootCmd.AddCommand(closeAllCmd)
 }
 
 func main() {

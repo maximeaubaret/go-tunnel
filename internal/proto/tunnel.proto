@@ -7,6 +7,7 @@ service TunnelService {
   rpc CreateTunnel (CreateTunnelRequest) returns (CreateTunnelResponse) {}
   rpc CloseTunnel (CloseTunnelRequest) returns (CloseTunnelResponse) {}
   rpc ListTunnels (ListTunnelsRequest) returns (ListTunnelsResponse) {}
+  rpc CloseAllTunnels (CloseAllTunnelsRequest) returns (CloseAllTunnelsResponse) {}
 }
 
 message CreateTunnelRequest {
@@ -40,4 +41,13 @@ message ListTunnelsResponse {
   }
   repeated TunnelInfo tunnels = 1;
 }
+
+message CloseAllTunnelsRequest {}
+
+message CloseAllTunnelsResponse {
+  bool success = 1;
+  string error = 2;
+  int32 count = 3;
+}
+
 

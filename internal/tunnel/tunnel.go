@@ -3,6 +3,7 @@ package tunnel
 import (
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"sync"
 	"golang.org/x/crypto/ssh"
@@ -82,6 +83,9 @@ func (t *Tunnel) start() {
 }
 
 func (t *Tunnel) forward(local net.Conn) {
+	localAddr := local.RemoteAddr().String()
+	log.Printf("New connection from %s to %s:%d", localAddr, t.Host, t.RemotePort)
+	
 	remote, err := t.client.Dial("tcp", fmt.Sprintf("localhost:%d", t.RemotePort))
 	if err != nil {
 		local.Close()
@@ -133,4 +137,19 @@ func (tm *TunnelManager) ListTunnels() []Tunnel {
 	}
 	return tunnels
 }
+
+func (tm *TunnelManager) CloseAllTunnels() int {
+	tm.mu.Lock()
+	defer tm.mu.Unlock()
+
+	count := len(tm.tunnels)
+	for key, tunnel := range tm.tunnels {
+		close(tunnel.done)
+		tunnel.listener.Close()
+		tunnel.client.Close()
+		delete(tm.tunnels, key)
+	}
+	return count
+}
+
 

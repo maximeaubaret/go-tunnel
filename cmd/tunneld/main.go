@@ -23,6 +23,7 @@ type server struct {
 }
 
 func (s *server) CreateTunnel(ctx context.Context, req *pb.CreateTunnelRequest) (*pb.CreateTunnelResponse, error) {
+	log.Printf("Creating tunnel: %s:%d -> localhost:%d", req.Host, req.RemotePort, req.LocalPort)
 	err := s.manager.CreateTunnel(req.Host, int(req.LocalPort), int(req.RemotePort), s.config)
 	if err != nil {
 		return &pb.CreateTunnelResponse{
@@ -36,6 +37,7 @@ func (s *server) CreateTunnel(ctx context.Context, req *pb.CreateTunnelRequest) 
 }
 
 func (s *server) CloseTunnel(ctx context.Context, req *pb.CloseTunnelRequest) (*pb.CloseTunnelResponse, error) {
+	log.Printf("Closing tunnel: %s:%d", req.Host, req.RemotePort)
 	err := s.manager.CloseTunnel(req.Host, int(req.RemotePort))
 	if err != nil {
 		return &pb.CloseTunnelResponse{
@@ -45,6 +47,17 @@ func (s *server) CloseTunnel(ctx context.Context, req *pb.CloseTunnelRequest) (*
 	}
 	return &pb.CloseTunnelResponse{
 		Success: true,
+	}, nil
+}
+
+func (s *server) CloseAllTunnels(ctx context.Context, req *pb.CloseAllTunnelsRequest) (*pb.CloseAllTunnelsResponse, error) {
+	log.Printf("Closing all tunnels...")
+	count := s.manager.CloseAllTunnels()
+	log.Printf("Closed %d tunnel(s)", count)
+	return &pb.CloseAllTunnelsResponse{
+		Success: true,
+		Count:   int32(count),
+		Error:   "",
 	}, nil
 }
 

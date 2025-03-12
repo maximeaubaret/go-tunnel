@@ -23,6 +23,9 @@ protoc --go_out=. --go_opt=paths=source_relative \
     --go-grpc_out=. --go-grpc_opt=paths=source_relative \
     internal/proto/tunnel.proto
 
+# Clean any leftover socket file
+rm -f /tmp/tunnel.sock
+
 # Verify dependencies again after proto generation
 echo "Verifying dependencies..."
 go mod tidy
