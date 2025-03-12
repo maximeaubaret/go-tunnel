@@ -44,6 +44,8 @@ message ListTunnelsResponse {
     uint64 bytes_received = 7; // Total bytes received
     double bandwidth_up = 8;   // Current upload bandwidth (bytes/sec)
     double bandwidth_down = 9; // Current download bandwidth (bytes/sec)
+    int32 active_conns = 10;  // Current number of active connections
+    uint64 total_conns = 11;  // Total connections since start
   }
   repeated TunnelInfo tunnels = 1;
 }

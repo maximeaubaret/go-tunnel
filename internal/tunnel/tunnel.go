@@ -39,6 +39,11 @@ type Tunnel struct {
 	BandwidthUp   float64 // bytes/sec
 	BandwidthDown float64 // bytes/sec
 	lastBWUpdate  time.Time
+
+	// Connection tracking
+	ActiveConns   int32
+	TotalConns    uint64
+	connectionMu  sync.RWMutex
 }
 
 func NewTunnelManager() *TunnelManager {
@@ -225,6 +230,18 @@ func (t *Tunnel) updateActivity() {
 func (t *Tunnel) forward(local net.Conn) {
 	t.updateActivity()
 	defer local.Close()
+
+	// Track connection
+	t.connectionMu.Lock()
+	t.ActiveConns++
+	t.TotalConns++
+	t.connectionMu.Unlock()
+
+	defer func() {
+		t.connectionMu.Lock()
+		t.ActiveConns--
+		t.connectionMu.Unlock()
+	}()
 	
 	// Mark tunnel as active
 	t.activeMu.Lock()
@@ -446,6 +463,7 @@ func (tm *TunnelManager) ListTunnels() []Tunnel {
 	for _, t := range tm.tunnels {
 		t.activityMu.RLock()
 		t.bandwidthMu.RLock()
+		t.connectionMu.RLock()
 		tunnel := Tunnel{
 			Host:           t.Host,
 			LocalPort:      t.LocalPort,
@@ -461,7 +479,10 @@ func (tm *TunnelManager) ListTunnels() []Tunnel {
 			BytesReceived: t.BytesReceived,
 			BandwidthUp:   t.BandwidthUp,
 			BandwidthDown: t.BandwidthDown,
+			ActiveConns:   t.ActiveConns,
+			TotalConns:    t.TotalConns,
 		}
+		t.connectionMu.RUnlock()
 		t.bandwidthMu.RUnlock()
 		t.activityMu.RUnlock()
 		tunnels = append(tunnels, tunnel)

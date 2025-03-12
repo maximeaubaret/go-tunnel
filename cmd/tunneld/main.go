@@ -76,6 +76,8 @@ func (s *server) ListTunnels(ctx context.Context, req *pb.ListTunnelsRequest) (*
 			BytesReceived:  t.BytesReceived,
 			BandwidthUp:    t.BandwidthUp,
 			BandwidthDown:  t.BandwidthDown,
+			ActiveConns:    t.ActiveConns,
+			TotalConns:     t.TotalConns,
 		})
 	}
 	

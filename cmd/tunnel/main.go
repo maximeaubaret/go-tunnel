@@ -334,6 +334,13 @@ func displayTunnels(tunnels []*pb.ListTunnelsResponse_TunnelInfo) {
 			t.BandwidthDown/1024,
 		)
 
+		// Display connection information
+		fmt.Printf("  %s %d active / %d total\n",
+			infoColor("Connections:"),
+			t.ActiveConns,
+			t.TotalConns,
+		)
+
 		fmt.Println()
 	}
 }
