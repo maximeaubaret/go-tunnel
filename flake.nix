@@ -35,10 +35,10 @@
                 internal/proto/tunnel.proto
             '';
 
-            # Build both binaries
+            # Build both binaries with version info
             postBuild = ''
-              go build -o $GOPATH/bin/tunnel ./cmd/tunnel
-              go build -o $GOPATH/bin/tunneld ./cmd/tunneld
+              go build -ldflags "-X github.com/cryptexus/go-tunnel/internal/version.Version=$pname-$version -X github.com/cryptexus/go-tunnel/internal/version.Commit=$(git rev-parse --short HEAD) -X github.com/cryptexus/go-tunnel/internal/version.Date=$(date -u +%Y-%m-%d)" -o $GOPATH/bin/tunnel ./cmd/tunnel
+              go build -ldflags "-X github.com/cryptexus/go-tunnel/internal/version.Version=$pname-$version -X github.com/cryptexus/go-tunnel/internal/version.Commit=$(git rev-parse --short HEAD) -X github.com/cryptexus/go-tunnel/internal/version.Date=$(date -u +%Y-%m-%d)" -o $GOPATH/bin/tunneld ./cmd/tunneld
             '';
 
             # Install both binaries

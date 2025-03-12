@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+
+	"github.com/cryptexus/go-tunnel/internal/version"
 	"os"
 	"os/signal"
 	"sort"
@@ -27,8 +29,9 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "tunnel <machine> [port_from:]port_to [[port_from:]port_to...]",
-	Short: "Manage SSH tunnels",
+	Use:     "tunnel <machine> [port_from:]port_to [[port_from:]port_to...]",
+	Version: version.Version,
+	Short:   "Manage SSH tunnels",
 	Long: `Create one or more SSH tunnels to a remote machine.
 Examples:
   tunnel server1 8080                    # Local 8080 to remote 8080

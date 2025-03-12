@@ -3,7 +3,10 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
+
+	"github.com/cryptexus/go-tunnel/internal/version"
 	"net"
 	"os"
 	"os/signal"
@@ -88,7 +91,14 @@ func (s *server) ListTunnels(ctx context.Context, req *pb.ListTunnelsRequest) (*
 
 func main() {
 	socketPath := "/tmp/tunnel.sock"
+	showVersion := flag.Bool("version", false, "Show version information")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf("tunneld version %s (%s) built on %s\n", 
+			version.Version, version.Commit, version.Date)
+		return
+	}
 
 	// Cleanup any existing socket file
 	if err := os.RemoveAll(socketPath); err != nil {
